@@ -1,0 +1,106 @@
+---
+title: "Chord Diagram"
+author: "Deniz, Mileva, Marina"
+date: "1/16/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Import packages
+
+Packages for chord diagrams (circular versions of Sankey). Ranked from best to worst:  
+1. chorddiag package (R): This is the only R package for an interactive chord diagram. It's builds on the JavaScript D3 library. (Further information can be found on the GitHub page: https://github.com/mattflor/chorddiag). The only downside is it offers fewer parameters to really fine-tune the appearance of the visualization.  
+2. circilize package (R): It only provides a static chord diagram (Explained here: https://www.r-graph-gallery.com/chord-diagram.html), but it allows more parameters to tailor the appearance of the visualization than the chorddiag package.  
+3. plotly (Python): Python plotly has functionality to create an interactive chord diagram. The interactive design and features are not as nice as those in the chorddiag package (Documentation: https://plotly.com/python/v3/filled-chord-diagram/).  
+
+Packages for Sankey (non-circular):  
+1. networkD3 package (R): This appears to be the primary interactive Sankey diagram package. Further research has to be conducted on the customization provided by the package. See an example here: https://www.data-to-viz.com/graph/sankey.html  
+2. Plotly Sankey (R): Further research has to be conducted to determine whether this package or the networkD3 will provide better interactive features. (Documentation here: https://plotly.com/r/sankey-diagram/)   
+3. ggalluvial (R): This appears to provide static Sankey plots.  
+
+Below, we've built an example chord diagram using the chorddiag package and the NCF Alumni data.
+
+```{r cache=TRUE, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(ggplot2)
+library(usethis)
+library(devtools)
+library(chorddiag)
+library(RColorBrewer)
+library(magrittr)
+library(forcats)
+```
+
+# Read Data
+```{r}
+alumns <- read.csv(file="../data/NCAlumn.csv")
+#dim(alumns)
+colnames(alumns)
+```
+
+# Processing academic divisions and industries
+```{r}
+# Recoded factors
+division_1.recoded <- alumns$DIVISION_1
+industry.recoded <- fct_rev(fct_infreq(fct_lump(alumns$Industry, n=7)))
+alumns.recoded <- alumns %>% mutate(
+  DIVISION_1 = division_1.recoded,
+  Industry = industry.recoded)
+
+# Processing data 
+data.division <- alumns.recoded %>%
+    drop_na(DIVISION_1, Industry) %>%
+    select(DIVISION_1, Industry) %>% 
+    filter(Industry != 'Other' & Industry != '') %>%
+    filter(DIVISION_1 != '') %>%
+    mutate(Industry = droplevels(Industry))
+
+as.matrix(table(data.division))
+```
+
+# Data for Visualization
+```{r}
+dataplot <- as.matrix(table(data.division))
+
+# Data/matrix to be plotted
+m <- dataplot
+m_transpose <- t(m)
+
+m_transpose
+```
+
+# Chord Diagram
+
+#### Chord diagram setup
+```{r}
+# Number of divisions
+num.divisions = length(rownames(dataplot))
+
+division <- rownames(dataplot)
+industry <- colnames(dataplot)
+
+# Colors
+mycols <- brewer.pal(num.divisions ,'Set2')[1:4]
+
+divisionColors <- mycols
+industryColors <- rep('grey', length(industry))
+colors <- c(industryColors, divisionColors)
+```
+
+#### Chord diagram visualization
+```{r}
+chorddiag(data = m_transpose, 
+          type='bipartite',
+          groupColors = colors, 
+          groupThickness = 0.05,
+          groupnamePadding = 10,
+          groupnameFontsize = 15,
+          showTicks = F, 
+          categoryNames = c('Industry', 'Academic Division'), 
+          categorynamePadding = 150, 
+          categorynameFontsize = 20, 
+          fadeLevel = 0.1, 
+          tooltipUnit = ' students')
+```
+
